@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -18,6 +18,18 @@ import { useApp } from '../context/AppContext';
 function Sidebar({ isOpen, setIsOpen }) {
   const location = useLocation();
   const { state } = useApp();
+  const [isLargeScreen, setIsLargeScreen] = useState(false);
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsLargeScreen(window.innerWidth >= 1024);
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   const menuItems = [
     { path: '/', name: 'Home', icon: HomeIcon },
@@ -34,6 +46,9 @@ function Sidebar({ isOpen, setIsOpen }) {
     closed: { x: -280 }
   };
 
+  // On large screens, sidebar should always be visible
+  const animateState = isLargeScreen ? "open" : (isOpen ? "open" : "closed");
+
   const accuracy = state.user.totalQuestions > 0 
     ? Math.round((state.user.score / state.user.totalQuestions) * 100) 
     : 0;
@@ -41,26 +56,24 @@ function Sidebar({ isOpen, setIsOpen }) {
   return (
     <>
       {/* Overlay for mobile */}
-      {isOpen && (
+      {isOpen && !isLargeScreen && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={() => setIsOpen(false)}
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-40"
         />
       )}
 
       {/* Sidebar */}
       <motion.aside
         variants={sidebarVariants}
-        animate={isOpen ? "open" : "closed"}
+        animate={animateState}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className={`fixed top-0 left-0 h-full w-64 glass-card m-4 rounded-2xl z-50 lg:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        }`}
+        className={`fixed top-20 left-0 bottom-0 w-64 glass-card m-4 rounded-2xl z-40 overflow-hidden`}
       >
-        <div className="p-6 h-full flex flex-col">
+        <div className="p-6 h-full flex flex-col overflow-y-auto">
           {/* Logo */}
           <div className="flex items-center space-x-3 mb-8">
             <div className="text-3xl">🎯</div>
@@ -71,7 +84,7 @@ function Sidebar({ isOpen, setIsOpen }) {
           </div>
 
           {/* Stats */}
-          <div className="mb-6 space-y-3">
+          <div className="mb-6 space-y-3 flex-shrink-0">
             <motion.div
               whileHover={{ scale: 1.02 }}
               className="glass-card p-4 rounded-xl"
@@ -132,8 +145,8 @@ function Sidebar({ isOpen, setIsOpen }) {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1">
-            <ul className="space-y-2">
+          <nav className="flex-1 overflow-y-auto min-h-0 sidebar-nav">
+            <ul className="space-y-2 pb-4">
               {menuItems.map((item, index) => {
                 const isActive = location.pathname === item.path;
                 return (
@@ -145,7 +158,7 @@ function Sidebar({ isOpen, setIsOpen }) {
                   >
                     <Link
                       to={item.path}
-                      onClick={() => setIsOpen(false)}
+                      onClick={() => !isLargeScreen && setIsOpen(false)}
                       className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-200 ${
                         isActive
                           ? 'bg-gradient-to-r from-blue-500/30 to-purple-500/30 text-white shadow-lg'
@@ -162,7 +175,7 @@ function Sidebar({ isOpen, setIsOpen }) {
           </nav>
 
           {/* Footer stats */}
-          <div className="border-t border-white/20 pt-4 mt-4">
+          <div className="border-t border-white/20 pt-4 mt-4 flex-shrink-0">
             <div className="text-center">
               <p className="text-white/70 text-xs mb-2">
                 Quiz Score: {state.user.score}/{state.user.totalQuestions}
